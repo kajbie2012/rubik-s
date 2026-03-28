@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Kostka Rubika</title>
+<style>
+  body { margin:0; overflow:hidden; background:#111; }
+
+  #controls {
+    position:absolute;
+    bottom:10px;
+    left:10px;
+    display:grid;
+    grid-template-columns: repeat(2, 60px);
+    gap:5px;
+  }
+
+  button {
+    padding:10px;
+    font-size:14px;
+    background:#222;
+    color:#fff;
+    border:1px solid #555;
+    border-radius:6px;
+    cursor:pointer;
+  }
+
+  button:hover {
+    background:#444;
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <button onclick="move('U',1)">U</button>
+  <button onclick="move('U',-1)">U'</button>
+
+  <button onclick="move('D',1)">D</button>
+  <button onclick="move('D',-1)">D'</button>
+
+  <button onclick="move('L',1)">L</button>
+  <button onclick="move('L',-1)">L'</button>
+
+  <button onclick="move('R',1)">R</button>
+  <button onclick="move('R',-1)">R'</button>
+
+  <button onclick="move('F',1)">F</button>
+  <button onclick="move('F',-1)">F'</button>
+
+  <button onclick="move('B',1)">B</button>
+  <button onclick="move('B',-1)">B'</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+camera.position.set(5,5,5);
+camera.lookAt(0,0,0);
+
+const light = new THREE.DirectionalLight(0xffffff,1);
+light.position.set(5,10,7);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040));
+
+const colors = [0xff0000,0xff8000,0xffffff,0xffff00,0x00ff00,0x0000ff];
+
+const cubes = [];
+const size = 0.9;
+const gap = 0.05;
+
+function createCube(x,y,z){
+  const geo = new THREE.BoxGeometry(size,size,size);
+  const mats = colors.map(c=>new THREE.MeshStandardMaterial({color:c}));
+  const cube = new THREE.Mesh(geo,mats);
+  cube.position.set(x*(size+gap),y*(size+gap),z*(size+gap));
+  scene.add(cube);
+  cubes.push(cube);
+}
+
+for(let x=-1;x<=1;x++){
+  for(let y=-1;y<=1;y++){
+    for(let z=-1;z<=1;z++){
+      createCube(x,y,z);
+    }
+  }
+}
+
+// AUDIO
+const soundFiles = {
+  U: 'u.wav',
+  D: 'd.wav',
+  L: 'l.wav',
+  R: 'r.wav',
+  F: 'f.wav',
+  B: 'b.wav'
+};
+
+function playSound(face){
+  const file = soundFiles[face];
+  if(!file) return;
+
+  const audio = new Audio(file);
+  audio.currentTime = 0;
+  audio.play();
+}
+
+// CAMERA ROTATION
+let drag=false, px=0, py=0;
+document.addEventListener("mousedown",e=>{drag=true;px=e.clientX;py=e.clientY;});
+document.addEventListener("mouseup",()=>drag=false);
+
+document.addEventListener("mousemove",e=>{
+  if(!drag) return;
+  let dx=e.clientX-px;
+  let dy=e.clientY-py;
+  px=e.clientX; py=e.clientY;
+  scene.rotation.y += dx*0.005;
+  scene.rotation.x += dy*0.005;
+});
+
+// CUBES LAYERS
+function getLayer(axis,val){
+  return cubes.filter(c=>Math.round(c.position[axis])===val);
+}
+
+let isRotating=false;
+
+function rotateLayer(axis,val,dir,face){
+  if(isRotating) return;
+  isRotating=true;
+
+  playSound(face);
+
+  const layer = getLayer(axis,val);
+  const pivot = new THREE.Object3D();
+  scene.add(pivot);
+
+  layer.forEach(c=>pivot.attach(c));
+
+  const angle = (Math.PI/2)*dir;
+
+  gsap.to(pivot.rotation, {
+    [axis]: angle,
+    duration: 0.35,
+    onComplete: () => {
+      layer.forEach(c=>{
+        scene.attach(c);
+        c.position.x = Math.round(c.position.x);
+        c.position.y = Math.round(c.position.y);
+        c.position.z = Math.round(c.position.z);
+      });
+      scene.remove(pivot);
+      isRotating=false;
+    }
+  });
+}
+
+// MOVE LOGIC
+function move(face, dir){
+  if(isRotating) return;
+
+  switch(face){
+    case "U": rotateLayer('y',1,-1*dir,'U'); break;
+    case "D": rotateLayer('y',-1,1*dir,'D'); break;
+    case "L": rotateLayer('x',-1,1*dir,'L'); break;
+    case "R": rotateLayer('x',1,-1*dir,'R'); break;
+    case "F": rotateLayer('z',1,-1*dir,'F'); break;
+    case "B": rotateLayer('z',-1,1*dir,'B'); break;
+  }
+}
+
+// KEYBOARD SUPPORT
+window.addEventListener("keydown",e=>{
+  if(isRotating) return;
+
+  const k=e.key.toUpperCase();
+  const reverse=e.shiftKey?-1:1;
+
+  if(["U","D","L","R","F","B"].includes(k)){
+    move(k, reverse);
+  }
+});
+
+// RENDER LOOP
+function animate(){
+  requestAnimationFrame(animate);
+  renderer.render(scene,camera);
+}
+animate();
+
+window.addEventListener("resize",()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
+
+</body>
+</html>

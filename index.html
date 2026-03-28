@@ -3,34 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <title>Kostka Rubika</title>
-<style>
-  body { margin:0; overflow:hidden; background:#111; }
 
+<style>
+  body {
+    margin:0;
+    overflow:hidden;
+    background: radial-gradient(circle at center, #1a1a1a, #000);
+    font-family: Arial, sans-serif;
+  }
+
+  /* WELCOME SCREEN */
+  #welcome {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background: rgba(0,0,0,0.85);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    color:white;
+    text-align:center;
+    padding:20px;
+  }
+
+  #welcome-box {
+    max-width:600px;
+    background: rgba(255,255,255,0.05);
+    padding:25px;
+    border-radius:12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+  }
+
+  #welcome button {
+    margin-top:20px;
+    padding:10px 20px;
+    font-size:16px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    background:#00aaff;
+    color:white;
+  }
+
+  #welcome button:hover {
+    background:#008fcc;
+  }
+
+  /* CONTROLS */
   #controls {
     position:absolute;
     bottom:10px;
-    left:10px;
+    right:10px;
     display:grid;
     grid-template-columns: repeat(2, 60px);
     gap:5px;
+    z-index:10;
   }
 
   button {
     padding:10px;
     font-size:14px;
-    background:#222;
+    background: rgba(30,30,30,0.8);
     color:#fff;
     border:1px solid #555;
     border-radius:6px;
     cursor:pointer;
+    backdrop-filter: blur(4px);
   }
 
   button:hover {
-    background:#444;
+    background: rgba(80,80,80,0.9);
   }
 </style>
 </head>
+
 <body>
+
+<!-- WELCOME SCREEN -->
+<div id="welcome">
+  <div id="welcome-box">
+    <div>
+      Welcome to the simulator of all my passions! To get started, click OK and then click the appropriate buttons in the lower right corner to shuffle and solve the cube. But what does this have to do with my passions? This site combines all three of my passions: programming, solving cubes, and playing guitar. Good luck!
+    </div>
+    <button onclick="closeWelcome()">OK</button>
+  </div>
+</div>
 
 <div id="controls">
   <button onclick="move('U',1)">U</button>
@@ -56,6 +117,10 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
 
 <script>
+function closeWelcome(){
+  document.getElementById("welcome").style.display = "none";
+}
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
@@ -93,7 +158,6 @@ for(let x=-1;x<=1;x++){
   }
 }
 
-// AUDIO
 const soundFiles = {
   U: 'u.wav',
   D: 'd.wav',
@@ -106,13 +170,10 @@ const soundFiles = {
 function playSound(face){
   const file = soundFiles[face];
   if(!file) return;
-
   const audio = new Audio(file);
-  audio.currentTime = 0;
   audio.play();
 }
 
-// CAMERA ROTATION
 let drag=false, px=0, py=0;
 document.addEventListener("mousedown",e=>{drag=true;px=e.clientX;py=e.clientY;});
 document.addEventListener("mouseup",()=>drag=false);
@@ -126,7 +187,6 @@ document.addEventListener("mousemove",e=>{
   scene.rotation.x += dy*0.005;
 });
 
-// CUBES LAYERS
 function getLayer(axis,val){
   return cubes.filter(c=>Math.round(c.position[axis])===val);
 }
@@ -163,7 +223,6 @@ function rotateLayer(axis,val,dir,face){
   });
 }
 
-// MOVE LOGIC
 function move(face, dir){
   if(isRotating) return;
 
@@ -177,10 +236,8 @@ function move(face, dir){
   }
 }
 
-// KEYBOARD SUPPORT
 window.addEventListener("keydown",e=>{
   if(isRotating) return;
-
   const k=e.key.toUpperCase();
   const reverse=e.shiftKey?-1:1;
 
@@ -189,7 +246,6 @@ window.addEventListener("keydown",e=>{
   }
 });
 
-// RENDER LOOP
 function animate(){
   requestAnimationFrame(animate);
   renderer.render(scene,camera);
